@@ -1,0 +1,104 @@
+import java.awt.Color;
+import java.util.Hashtable;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import acm.gui.TableLayout;
+
+/**
+ * This class makes the integer and double constructors for the sliderBox class that creates a JPanel followed by sliders
+ * These constructors are later used to create sliders in the bSim class
+ * @author Gohar Saqib Fazal; McGill ID: 260840565
+ *
+ */
+
+public class sliderBox {
+
+	//setting up the parameters to be used in the constructors
+	JPanel myPanel;
+	JLabel nameLabel;
+	JLabel minLabel;
+	JLabel maxLabel;
+	JSlider mySlider;
+	JLabel sReadout;
+	Integer imin;
+	Integer imax;
+
+	//This constructor only reads integer values
+	public sliderBox(String name, Integer min, Integer dValue, Integer max) { // Integer values
+		myPanel = new JPanel();
+		nameLabel = new JLabel(name);
+		minLabel = new JLabel(min.toString());
+		maxLabel = new JLabel(max.toString()); 
+		mySlider = new JSlider(min,max,dValue); 
+		sReadout = new JLabel(dValue.toString());
+		sReadout.setForeground(Color.blue);
+		myPanel.setLayout(new TableLayout(1,5));
+		myPanel.add(nameLabel,"width=100");
+		myPanel.add(minLabel,"width=25"); 
+		myPanel.add(mySlider,"width=100"); 
+		myPanel.add(maxLabel,"width=100"); 
+		myPanel.add(sReadout,"width=80"); 
+		imin=min;
+		imax=max; }
+
+	//This constructor only reads double values
+	public sliderBox(String name, double min, double dValue,
+			double max) { // Integer values
+		myPanel = new JPanel();
+		nameLabel = new JLabel(name);
+		minLabel = new JLabel(min+"");
+		maxLabel = new JLabel(max+"");
+		//the condition in the if statement is only true for double values between 0 and 1. This allows for double values to be used in the sliderBox class that would otherwise not be possible
+		if(min>=0 && dValue >=0 && dValue <=1 && max <=1) {
+			mySlider =new JSlider((int )(min*10), (int)(max*10), (int)(dValue*10));
+		}
+		else {
+			mySlider = new JSlider((int)min,(int)max,(int)dValue);
+		}
+		sReadout = new JLabel(dValue+"");
+		sReadout.setForeground(Color.blue);
+		myPanel.setLayout(new TableLayout(1,5));
+		myPanel.add(nameLabel,"width=100");
+		myPanel.add(minLabel,"width=25");
+		myPanel.add(mySlider,"width=100");
+		myPanel.add(maxLabel,"width=100");
+		myPanel.add(sReadout,"width=80");
+		imin=(int)min;
+		imax=(int)max;
+	}
+
+	//this is a getter for the sliders that contain integer values
+	public Integer getISlider() {
+		return mySlider.getValue();
+	}
+	//this a setter for the sliders that contain integer values
+	public void setISlider(double val) {
+		mySlider.setValue((int) val);
+		sReadout.setText(val+""); 
+	}
+
+	//this is a getter for the sliders that contain double values
+	public double getKSlider() {
+		return((double)mySlider.getValue()/10);
+	}
+	//this is a setter for the sliders that contain double values
+	public void setKSlider(double val) {
+		mySlider.setValue((int)(val*10));
+		sReadout.setText((val)+"");
+	}
+
+	//sets the line readout as Color for the color slider
+	public void colorline() {
+		sReadout.setText("Color");
+	}
+	//denotes colors to values so that they can be incorporated with the color slider
+	public void valuetocolor(int a) {
+		if(a==0) sReadout.setForeground(Color.BLACK);
+		if(a==1) sReadout.setForeground(Color.GREEN);
+		if(a==2) sReadout.setForeground(Color.ORANGE);
+		if(a==3) sReadout.setForeground(Color.PINK);
+		if(a==4) sReadout.setForeground(Color.BLUE);
+		if(a==5) sReadout.setForeground(Color.YELLOW);
+	}
+}
