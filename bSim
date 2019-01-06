@@ -1,0 +1,475 @@
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.MouseEvent;
+import java.util.Random;
+import java.util.Scanner;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import acm.graphics.GLabel;
+import acm.graphics.GLine;
+import acm.graphics.GObject;
+import acm.graphics.GOval;
+import acm.graphics.GRect;
+import acm.gui.TableLayout;
+import acm.program.GraphicsProgram;
+import acm.util.RandomGenerator;
+
+/**
+ *This assignment uses the gBall constructor to make several instances of gBalls.
+ *The first simulation is based on the already set parameters for assignment 3.
+ *For the second simulation the parameters can be altered using JSliders and then called by the run method
+ *The Bonus part of the assignment is also attempted whereby the balls can be clicked and dragged on the screen.
+ *The simulation of the second ball created will be based on the single instance paramters in the assignment
+ * @author Gohar Saqib Fazal; McGill ID: 260840565
+ */
+
+public class bSim extends GraphicsProgram implements ChangeListener, ItemListener{
+	//setting up the parameters to be used in the following run method
+	// display parameters
+	private static final int WIDTH = 1450;// The width of the window created
+	private static final int HEIGHT = 800;//The height of the window created
+	private static final int OFFSET=200; //Screen offset
+	private static final int LABEL_XPOSITION = 450;//X Position of the GLabel
+	private static final int LABEL_YPOSITION = 10;//Y Position of the GLabel 
+	// simulation parameters 
+	private static int NUMBALLS = 15;// Number of balls to simulate.
+	private static double MINSIZE = 1;// Minimum ball size
+	private static double MAXSIZE = 8;// Maximum ball size	
+	private static double XMIN = 10; //Minimum X start location
+	private static double XMAX = 50;	//Maximum X start location
+	private static double YMIN = 50;// Minimum Y start location
+	private static double YMAX = 100; // Maximum Y start location
+	private static double EMIN = 0.4;// Minimum loss coefficient
+	private static double EMAX = 0.9;// Maximum loss coefficient
+	private static double VMIN = 0.5;// Minimum X velocity
+	private static double VMAX = 3.0; // Maximum X velocity 
+	private static double SCALAR_FACTOR = 10;// Allows for conversion between the MKS units and pixels 
+
+	// new example parameters for the bonus part of the assignment
+	private GObject gobj;//The object being dragged 
+	private  double lastX;//The last mouse X position 
+	private double lastY;//The last mouse Y position
+	private GOval clickedOval;//will cast GObject to this variable
+	private bNode clickedNode;//passing clickedOval to function that will return a node containing the underlying ball object that this GOval belongs to
+
+	//setting up the single instance parameters
+	private static int colorVal = 1;//the color of the ball dragged my mouse
+	private static double ballsizeVal = 50;//the size of the ball being dragged by mouse
+	private static double elossVal = 0.4;//the energy loss of the ball being dragged by mouse
+	private static double xvelVal = 1;//the horizontal velocity of the ball being dragged by the mouse
+
+	//creating a G label object so that it can be used later in the methods to add on the screen
+	GLabel label = new GLabel("Click mouse to continue");
+
+	//Sets up random number generator
+	private RandomGenerator rgen = RandomGenerator.getInstance();
+
+	// Sets up a binary tree  
+	bTree myTree = new bTree(); //passing clickedOval to a function that will return a node containing the underlying ball object that this GOval belongs to
+
+	/** Method called on mouse press to record the coordinates
+	 * of the click 
+	 */
+	public void mousePressed(MouseEvent e) {
+		lastX = e.getX();
+		lastY = e.getY();
+		gobj = getElementAt(lastX, lastY); 
+		if (!(gobj==null)) {
+			clickedOval = (GOval)gobj; //casting to GOval
+
+			/* next find the object in the BTree and pass back the
+	          containing node – this example uses a method called findNode –
+	          but you can traverse the tree as you like, possibly using
+	          existing methods you have previously written*/
+			clickedNode = myTree.findNode(clickedOval);
+
+			//The following changes the color of a ball
+			clickedNode.aBall.myBall.setFillColor(Color.RED);
+
+			//This stops the simulation for the associated ball thread
+			clickedNode.aBall.setbState(false);
+		}
+		else {
+			println("null"); // show in console that click was not on an object
+			clickedNode = null;
+		}
+	}
+	/*
+	 * The Mouse Released method causes the simulation of the ball to occur according to the single instance parameters when the clicked mouse
+	 * is released. This method allows for smooth simulation of the individual ball for the bonus
+	 */
+	public void mouseReleased(MouseEvent e) {
+		gBall ballb = new gBall(e.getX()-clickedNode.aBall.getSize()/2,(600-(e.getY()-clickedNode.aBall.getSize()/2))/10,ballsizeVal, setvaluetocolor(), elossVal, xvelVal);//creates a ball with the specified single instance parameters
+		add(ballb.myBall);//adds the individual ball on the screen
+		ballb.start();//starts the simulation fo the second ball
+		remove(clickedNode.aBall.myBall);//removes the clickedNode for the already created balls
+		clickedNode.aBall=ballb;//adds a new clickedNode for ballb 
+	}
+
+	/*
+	 * The Mouse Dragged method allows for the ball to move in accordance
+	 * with the movement of the mouse 
+	 */
+	public void mouseDragged(MouseEvent e) {
+		clickedNode.aBall.myBall.setLocation((e.getX()-clickedNode.aBall.getSize()/2),(e.getY()-clickedNode.aBall.getSize()/2));//sets the location of the ball as it is dragged
+	}
+
+	// Standalone Applet
+	public static void main(String[] args) {
+		new bSim().start(args);
+	}
+
+	//allows the sliders to change their state and to allow for different parameters be set for the balls being called in the run method and the bonus part of the assignment
+	public void stateChanged(ChangeEvent e) {
+		JSlider source = (JSlider)e.getSource();
+		if (source==numballsSlider.mySlider) {
+			NUMBALLS=numballsSlider.getISlider();
+			numballsSlider.setISlider(NUMBALLS);
+		}
+		else if( source== minSizeSlider.mySlider){
+			MINSIZE = minSizeSlider.getISlider();
+			minSizeSlider.setISlider(MINSIZE);
+		}
+		else if( source== maxSizeSlider.mySlider) {
+			MAXSIZE = maxSizeSlider.getISlider();
+			maxSizeSlider.setISlider(MAXSIZE);
+		}
+		else if( source== xminSlider.mySlider) {
+			XMIN = xminSlider.getISlider();
+			xminSlider.setISlider(XMIN);
+		}
+		else if( source== xmaxSlider.mySlider) {
+			XMAX= xmaxSlider.getISlider();
+			xmaxSlider.setISlider(XMAX);
+		}
+		else if( source== yminSlider.mySlider) {
+			YMIN= yminSlider.getISlider();
+			yminSlider.setISlider(YMIN);
+		}
+		else if( source== ymaxSlider.mySlider) {
+			YMAX= ymaxSlider.getISlider();
+			ymaxSlider.setISlider(YMAX);
+		}
+		else if( source== lossminSlider.mySlider) {
+			EMIN = lossminSlider.getKSlider();
+			lossminSlider.setKSlider(EMIN);
+		}
+		else if( source== lossmaxSlider.mySlider) {
+			EMAX= lossmaxSlider.getKSlider();
+			lossmaxSlider.setKSlider(EMAX);
+		}
+		else if( source== xvelminSlider.mySlider) {
+			VMIN= xvelminSlider.getISlider();
+			xvelminSlider.setISlider(VMIN);
+		}
+		else if( source== xvelmaxSlider.mySlider) {
+			VMAX= xvelmaxSlider.getISlider();
+			xvelmaxSlider.setISlider(VMAX);
+		}
+		else if( source== colorSlider.mySlider) {
+			colorVal= colorSlider.getISlider();
+			colorSlider.valuetocolor(colorVal);	
+		}	
+		else if( source== ballsizeSlider.mySlider) {
+			ballsizeVal= ballsizeSlider.getISlider();
+			ballsizeSlider.setISlider(ballsizeVal);
+		}
+		else if( source== elossSlider.mySlider) {
+			elossVal= elossSlider.getKSlider();
+			elossSlider.setKSlider(elossVal);
+		}
+		else if( source== xvelSlider.mySlider) {
+			xvelVal= xvelSlider.getISlider();
+			xvelSlider.setISlider(xvelVal);
+		}		
+
+	}
+	//SliderBox for General Simulation Parameters are being created 
+	sliderBox numballsSlider;
+	sliderBox minSizeSlider;
+	sliderBox maxSizeSlider;
+	sliderBox xminSlider;
+	sliderBox xmaxSlider;
+	sliderBox yminSlider;
+	sliderBox ymaxSlider;
+	sliderBox lossminSlider;
+	sliderBox lossmaxSlider;
+	sliderBox xvelminSlider;
+	sliderBox xvelmaxSlider;
+	//SliderBoxes for Single Instance Variables are being created
+	sliderBox colorSlider;
+	sliderBox ballsizeSlider;
+	sliderBox elossSlider;
+	sliderBox xvelSlider;
+
+
+	/*
+	 * Creates a JCombo Box with 5 options:
+	 * bSim
+	 * Run
+	 * Clear
+	 * Stop
+	 * Quit
+	 * 
+	 * The functionality to these options is further provided in the item state changed method
+	 */
+	JComboBox<String> bSimC;
+	void setChoosers() {
+		bSimC = new JComboBox<String>();//Creates a JCombo Box object called bSimC
+		bSimC.addItem("bSim");
+		bSimC.addItem("Run");
+		bSimC.addItem("Clear");
+		bSimC.addItem("Stop");
+		bSimC.addItem("Quit");
+		add(bSimC,NORTH);//adds the bSimC to the north Panel of the screen
+		addJComboListeners();//calls the method that further calls for item listeners to be called for the JCombo Box
+	}
+
+	/*
+	 * adds listeners for all the options in the JCombo Box which can further allow methods to be attributed to each of the options
+	 * and provide functionality
+	 */
+	void addJComboListeners() {
+		bSimC.addItemListener((ItemListener)this);
+	}
+
+	public void run() {
+
+		//making a JPanel object for the sliders on the eastPannel of the window
+		JPanel eastPannel = new JPanel();
+
+		//Creating the general simulation parameters as sliders to be used for the simulation caused by the Run method in the JCombo Box
+		JLabel generalsimulation = new JLabel("General Simulation Parameters");
+		eastPannel.add(generalsimulation);
+		eastPannel.setLayout(new GridLayout(40,0));//creates a grid on the east Panel with 40 rows and 0 columns
+		//NUMBALLS slider
+		numballsSlider = new sliderBox("NUMBALLS", 1.0, 15.0, 25.0);
+		eastPannel.add(numballsSlider.myPanel,"EAST");
+		numballsSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//MIN SIZE slider
+		minSizeSlider = new sliderBox("MIN SIZE", 1.0, 1.0, 25.0);
+		eastPannel.add(minSizeSlider.myPanel,"EAST");
+		minSizeSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//MAX SIZE slider
+		maxSizeSlider = new sliderBox("MAX SIZE", 1.0, 8.0, 25.0);
+		eastPannel.add(maxSizeSlider.myPanel, "EAST");
+		maxSizeSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//X MIN slider
+		xminSlider = new sliderBox("X MIN", 1.0, 10.0, 200.0);
+		eastPannel.add(xminSlider.myPanel, "EAST");
+		xminSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//X MAX slider
+		xmaxSlider = new sliderBox("X MAX", 1.0, 50.0, 200.0);
+		eastPannel.add(xmaxSlider.myPanel, "EAST");
+		xmaxSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//Y MIN Slider 
+		yminSlider = new sliderBox("Y MIN", 1.0, 50.0, 100.0);
+		eastPannel.add(yminSlider.myPanel, "EAST");
+		yminSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//Y MAX Slider
+		ymaxSlider = new sliderBox("Y MAX", 1.0, 100.0, 100.0);
+		eastPannel.add(ymaxSlider.myPanel, "EAST");
+		ymaxSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//LOSS MIN Slider
+		lossminSlider = new sliderBox("LOSS MIN", 0.0, 0.4, 1.0);
+		eastPannel.add(lossminSlider.myPanel, "EAST");
+		lossminSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//LOSS MAX slider
+		lossmaxSlider = new sliderBox("LOSS MAX", 0.0, 0.9, 1.0);
+		eastPannel.add(lossmaxSlider.myPanel, "EAST");
+		lossmaxSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//X VEL MIN slider
+		xvelminSlider = new sliderBox("X VEL MIN", 0.0, 0.0, 10.0);
+		eastPannel.add(xvelminSlider.myPanel, "EAST");
+		xvelminSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//X VEL MAX slider
+		xvelmaxSlider = new sliderBox("X VEL MAX", 0.0, 3.0, 10.0);
+		eastPannel.add(xvelmaxSlider.myPanel, "EAST");
+		xvelmaxSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+
+		//Creating the single instance parameters to be used for the simulation of the ball for the bonus part of the assignment
+		JLabel singleinstanceparameters = new JLabel("Single Instance Parameters");
+		eastPannel.add(singleinstanceparameters);
+		eastPannel.setLayout(new GridLayout(20,0));//creates a grid on the eastt Panel that has 20 rows and 0 columns
+		//COLOR slider
+		colorSlider = new sliderBox("Color", 0.0, 1.0, 5.0);
+		colorSlider.colorline();
+		eastPannel.add(colorSlider.myPanel, "EAST");
+		colorSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//BALL SIZE Slider
+		ballsizeSlider = new sliderBox("Ball Size", 1.0, 8.0, 100.0);
+		eastPannel.add(ballsizeSlider.myPanel, "EAST");
+		ballsizeSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//E LOSS Slider
+		elossSlider = new sliderBox("E Loss", 0, 0.5, 1.0);
+		eastPannel.add(elossSlider.myPanel, "EAST");
+		elossSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+		//X VEL Slider
+		xvelSlider = new sliderBox("X Vel", 0.0, 1.0, 10.0);
+		eastPannel.add(xvelSlider.myPanel, "EAST");
+		xvelSlider.mySlider.addChangeListener((ChangeListener) this);
+		add(eastPannel);
+
+		//this calls the method that makes the JCombo Box in the assignment with all the options required
+		setChoosers();
+
+		//adjusts the width and height of the applet according to the specifications given in the assignment
+		this.resize(WIDTH,HEIGHT); 
+
+		//creates a line from (0,600) to (1200,600) 
+		add(new GLine (0,HEIGHT-OFFSET,WIDTH,HEIGHT-OFFSET));
+
+		/**
+		 * Create and start multiple instances of gBall
+		 * The gBall constructor is called to be implemented by the GraphicsProgram
+		 * The randomly generated parameters are also set for the constructor of the new gBall object i.e. ballA using the RandomGenerator class
+		 */
+
+		for (int n=0;n<NUMBALLS;n++)
+		{
+			//setting up the parameters for the constructor that are to be randomly generated
+			double xi = rgen.nextDouble(XMIN, XMAX);
+			double yi = rgen.nextDouble(YMIN,YMAX);
+			double bSize = rgen.nextDouble(MINSIZE*SCALAR_FACTOR,MAXSIZE*SCALAR_FACTOR);
+			Color bColor = rgen.nextColor();
+			double bLoss = rgen.nextDouble(EMIN,EMAX);
+			double bVel = rgen.nextDouble(VMIN,VMAX);
+
+			gBall aBall = new gBall( xi, yi,bSize, bColor, bLoss, bVel);//using the constructor to create a gBall object
+			add(aBall.myBall);//adds the randomly generated balls onto the screen
+
+			/**
+			 *Causes this thread to begin execution; the Java Virtual Machine calls the run method of this thread.
+			 *The result is that two threads are running concurrently: the current thread (which returns from the call to the start method) and the other thread (which executes its run method).
+			 *It is never legal to start a thread more than once. In particular, a thread may not be restarted once it has completed execution.
+			 */
+			aBall.start();
+
+			//modifying the addNode method to accommodate the gBall object
+			myTree.addNode(aBall);
+
+		}
+
+		//calls the method for the traversal of the tree for the sorting of the balls
+		while (myTree.is_Running()!=false) {
+			myTree.is_Running();
+		}
+
+		label.move(LABEL_XPOSITION, LABEL_YPOSITION);//makes a GLabel at the required position to allow for user interaction
+		add(label);//adds the label onto the screen
+	}
+
+	//Detecting users input for all methods that require interactive programming and the use of a mouse as a input 
+	public void init() {
+		addMouseListeners();
+	}
+
+	//Using users input to sort the balls in ascending order of size i.e. clicking of mouse triggers the sorting of the balls	
+	public void mouseClicked(MouseEvent e) {
+		myTree.moveSort();//sorts the ball on the screen
+		label.setLabel("All sorted!");//when the user clicks the message on the screen changes to tell the user that the desired function has been carried out
+		add(label);//adds the new label on the screen
+	}
+	/*
+	 * A seperate method called startBalls has been made so that the simulation can be carried out repeatedly at different parameters.
+	 * Once this method is created, the method can be called in the JCombo Box to allow for a different simulation each time according to the parameters 
+	 * on the JSliders defined above without any issue of the balls previously created causing any errors in the sorting of balls
+	 */
+	public void startBalls() {
+		myTree = new bTree();//creates a new bTree to make sure that the previously created bTree doesn't create an issue while sorting the balls a second time the simulation is carried out
+
+		for (int n=0;n<NUMBALLS;n++)
+		{
+			//setting up the parameters for the constructor that are to be randomly generated
+			double xi = rgen.nextDouble(XMIN, XMAX);
+			double yi = rgen.nextDouble(YMIN,YMAX);
+			double bSize = rgen.nextDouble(MINSIZE*SCALAR_FACTOR,MAXSIZE*SCALAR_FACTOR);
+			Color bColor = rgen.nextColor();
+			double bLoss = rgen.nextDouble(EMIN,EMAX);
+			double bVel = rgen.nextDouble(VMIN,VMAX);
+
+			gBall aBall = new gBall( xi, yi,bSize, bColor, bLoss, bVel);//using the constructor to create a gBall object
+			add(aBall.myBall);//adds the randomly generated balls onto the screen
+
+			/**
+			 *Causes this thread to begin execution; the Java Virtual Machine calls the run method of this thread.
+			 *The result is that two threads are running concurrently: the current thread (which returns from the call to the start method) and the other thread (which executes its run method).
+			 *It is never legal to start a thread more than once. In particular, a thread may not be restarted once it has completed execution.
+			 */
+			aBall.start();
+
+			//modifying the addNode method to accommodate the gBall object
+			myTree.addNode(aBall);
+
+		}
+	}
+
+	//this method allows for functionality to be added to all the components of the already created JCombo Box.
+	public void itemStateChanged(ItemEvent e) {
+		JComboBox source = (JComboBox)e.getSource();
+		if (source==bSimC) {
+			//this corresponds to the original simulation with the already set parameters
+			if (bSimC.getSelectedIndex()==0) {
+				System.out.println("Starting simulation");
+				this.myTree.is_Running();
+			}
+			//this corresponds to the run method where the simulation parameters are set by the sliders on the east panel of the screen
+			else if (bSimC.getSelectedIndex()==1) {
+				this.removeAll();//removes all the objects from the screen
+				add(new GLine (0,HEIGHT-OFFSET,WIDTH,HEIGHT-OFFSET));//adds the ground according to specifications in the assignment
+				startBalls();//calls the already created startBalls method to start a new simulation according to parameters set by the sliders		
+			}
+			//this corresponds to the clear method where everything is cleared from the screen
+			else if(bSimC.getSelectedIndex()==2) {
+				this.removeAll();//removes all objects from the screen
+				add(new GLine (0,HEIGHT-OFFSET,WIDTH,HEIGHT-OFFSET));//adds the ground according to specifications given in the assignment
+			}
+			//this corresponds to the stop method where the simulation comes to a standstill when the button in the JCombo Box is pressed
+			else if(bSimC.getSelectedIndex()==3) {
+				myTree.stopsort();//calls the stop sort method in the bTree class that stops the simulation
+			}
+			//this corresponds to the quit method where the screen exits when the following button in the JCombo Box is pressed 
+			else if(bSimC.getSelectedIndex()==4){
+				System.exit(0);//a method that stops the simulation and closes the java applet
+			}
+		}    
+	}
+	/*
+	 * a method called single color to allow for the colors to be represented by a slider
+	 * values on the slider are used to represent colors to allow for the color of the ball in the single instance to change
+	 */
+	public Color setvaluetocolor() {
+		if(colorVal==0) return Color.BLACK;
+		if(colorVal==1) return Color.GREEN;
+		if(colorVal==2) return Color.ORANGE;
+		if(colorVal==3) return Color.PINK;
+		if(colorVal==4) return Color.BLUE;
+		if(colorVal==5) return Color.YELLOW;
+		return null;
+	}
+}
