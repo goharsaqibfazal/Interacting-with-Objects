@@ -1,0 +1,2 @@
+# Interacting-with-Objects
+In the last projects, I implemented a binary-tree to organize and store my data. In this project, I implemented tools that allowed a user to interact asynchronously with the simulation program, while still taking advantage of the architecture surrounding the objects and data structure you have previously created. I implemented listeners and events to control parameters that already existed in my simulation, but in a way that allowed users to interact with the simulation as it runs.
