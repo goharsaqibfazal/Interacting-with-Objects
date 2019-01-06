@@ -1,0 +1,10 @@
+/*
+ * creating the nodes of the binary tree i.e. root followed by a left and right node
+ * it is set to public so that it can be accessed from bSim
+ */
+	public class bNode {
+		gBall aBall;
+		bNode left;
+		bNode right;
+	
+	}
